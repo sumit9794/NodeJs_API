@@ -1,15 +1,27 @@
 {
-  "name": "my-node-app",
+  "name": "@sumit9794/my-node-app",
   "version": "1.0.0",
-  "description": "",
+  "description": "My Node.js API package published to GitHub Packages",
   "main": "index.js",
   "scripts": {
     "test": "echo \"No tests yet\" && exit 0",
     "start": "node index.js"
   },
-  "keywords": [],
-  "author": "",
+  "keywords": [
+    "nodejs",
+    "api",
+    "express",
+    "github-packages"
+  ],
+  "author": "Sumit Singh",
   "license": "ISC",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/sumit9794/NodeJs_API.git"
+  },
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com/"
+  },
   "dependencies": {
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.2",
