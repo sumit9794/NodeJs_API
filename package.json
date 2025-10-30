@@ -1,6 +1,6 @@
 {
   "name": "@sumit9794/my-node-app",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "My Node.js API package published to GitHub Packages",
   "main": "index.js",
   "scripts": {
