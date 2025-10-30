@@ -2,7 +2,7 @@
 const db = require('../db');  // Assuming you have a DB connection file
 
 class Project {
-  static async create(projectData) {
+  static async create(projectData  ) {
   const { name, description, thumbnail, user_id } = projectData;
   const query = 'INSERT INTO projects (name, description, image, user_id) VALUES (?, ?, ?, ?)';
   try {
