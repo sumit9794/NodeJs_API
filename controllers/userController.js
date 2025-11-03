@@ -1,152 +1,172 @@
 const bcrypt = require('bcryptjs');
-const db = require('../db');
+const User = require('../models/User'); // 👈 your MongoDB model
 
+// ======================
+// 🟢 SIGNUP CONTROLLER
+// ======================
 exports.signup = async (req, res) => {
-  const { name, user_name, email, password } = req.body;
+  const { name, user_name, email, password, role } = req.body;
 
+  // Basic validation
   if (!name || !user_name || !email || !password) {
     return res.status(400).json({ message: 'All fields are required' });
   }
 
   try {
-    const [existingUser] = await db.query(
-      'SELECT * FROM users WHERE user_name = ? OR email = ?',
-      [user_name, email]
-    );
+    // Check if username or email already exists
+    const existingUser = await User.findOne({
+      $or: [{ user_name }, { email }],
+    });
 
-    if (existingUser.length > 0) {
-      return res.status(400).json({ message: 'Username or email already exists' });
+    if (existingUser) {
+      return res
+        .status(400)
+        .json({ message: 'Username or email already exists' });
     }
 
+    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    const [result] = await db.query(
-      'INSERT INTO users (name, user_name, email, password) VALUES (?, ?, ?, ?)',
-      [name, user_name, email, hashedPassword]
-    );
+    // Create new user
+    const newUser = await User.create({
+      name,
+      user_name,
+      email,
+      password: hashedPassword,
+      role: role || 'User',
+      deleted_at: false,
+      updated_on: new Date(),
+    });
 
-    res.status(201).json({ message: 'Signup successful', userId: result.insertId });
+    res.status(201).json({
+      message: 'Signup successful',
+      userId: newUser._id,
+    });
   } catch (err) {
     console.error('Signup error:', err);
     res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
-// ✅ Login with sessions
+// ======================
+// 🟢 LOGIN CONTROLLER
+// ======================
 exports.login = async (req, res) => {
   console.log('🟢 Incoming login request');
   console.log('Session before login:', req.session);
 
   const { user_name, password } = req.body;
-  if (!user_name || !password)
-    return res.status(400).json({ message: 'Username and password required' });
+
+  if (!user_name || !password) {
+    return res
+      .status(400)
+      .json({ message: 'Username and password required' });
+  }
 
   try {
-    const [rows] = await db.query('SELECT * FROM users WHERE user_name = ?', [user_name]);
-    if (rows.length === 0)
-      return res.status(401).json({ message: 'Invalid credentials' });
+    const user = await User.findOne({ user_name });
 
-    const user = rows[0];
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch)
+    if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
 
     if (!req.session) {
       console.error('🚨 req.session is undefined!');
       return res.status(500).json({ message: 'Session not initialized' });
     }
 
-    // Set session
-    req.session.userId = user.id;
+    // Set session userId
+    req.session.userId = user._id;
 
-    // Save session before sending response
-    req.session.save(err => {
+    req.session.save((err) => {
       if (err) {
         console.error('🚨 Session save error:', err);
         return res.status(500).json({ message: 'Failed to save session' });
       }
-      console.log('✅ Session after setting userId:', req.session);
-      res.json({ message: 'Login successful', userId: user.id });
-    });
 
+      console.log('✅ Session after setting userId:', req.session);
+      res.json({
+        message: 'Login successful',
+        userId: user._id,
+        role: user.role,
+      });
+    });
   } catch (err) {
     console.error('🔥 Login route failed:', err);
     res.status(500).json({ error: err.message });
   }
 };
 
-
-// ✅ Dashboard route (protected)
+// ======================
+// 🟢 GET USERS (Dashboard)
+// ======================
 exports.getUsers = async (req, res) => {
-  // Check if session userId exists, if not return Unauthorized status
   if (!req.session.userId) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
 
   try {
-    // Query the database to get the user matching the session ID
-    const [rows] = await db.query(
-      'SELECT id, name, user_name, email FROM users WHERE id = ?',
-      [req.session.userId]
+    const user = await User.findById(req.session.userId).select(
+      'name user_name email role'
     );
 
-    // If no user is found, return a 404 with a "User not found" message
-    if (rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    // Send the user data back as the response with custom name 'user'
-    res.json({ user: rows[0] });
+    res.json({ user });
   } catch (err) {
-    // If an error occurs, return a 500 status with the error message
     console.error('Error fetching user:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
-
-
-
+// ======================
+// 🟢 PROFILE CONTROLLER
+// ======================
 exports.getProfile = async (req, res) => {
-  
   const userId = req.session.userId;
 
-  if (!userId) 
-    
+  if (!userId) {
     return res.status(401).json({ message: 'Unauthorized' });
+  }
 
   try {
-    // Only fetch the user matching the session ID
-    const [rows] = await db.query(
-      'SELECT id, name, user_name, email FROM users WHERE id = ?',
-      [userId]
+    const user = await User.findById(userId).select(
+      'name user_name email role updated_on'
     );
 
-    if (rows.length === 0) 
+    if (!user) {
       return res.status(404).json({ message: 'User not found' });
-     
-    res.json({ user: rows[0] }); // return the single user object
+    }
+
+    res.json({ user });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error fetching profile:', err);
+    res.status(500).json({ error: 'Internal Server Error' });
   }
 };
 
-
-// ✅ Logout
-// ✅ Logout Controller
+// ======================
+// 🟢 LOGOUT CONTROLLER
+// ======================
 exports.logout = (req, res) => {
-  // If session doesn’t exist, user is already logged out
   if (!req.session) {
     return res.status(200).json({ message: 'No active session' });
   }
 
-  req.session.destroy(err => {
+  req.session.destroy((err) => {
     if (err) {
       console.error('Error destroying session:', err);
       return res.status(500).json({ message: 'Logout failed' });
     }
 
-    // Clear the session cookie — must match the session cookie name ("sid")
+    // Clear session cookie
     res.clearCookie('sid', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -156,4 +176,3 @@ exports.logout = (req, res) => {
     return res.status(200).json({ message: 'Logged out successfully' });
   });
 };
-
