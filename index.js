@@ -3,16 +3,31 @@ const session = require('express-session');
 const cors = require('cors');
 const mongoose = require('mongoose');
 const userRoutes = require('./routes/userRoutes');
+require('dotenv').config();
 
 const app = express();
 
-// Middleware
+// ✅ Middleware
 app.use(express.json());
 
-// ✅ CORS setup (for React frontend)
+// ✅ Allowed frontend origins (no trailing slash!)
+const allowedOrigins = [
+  'http://localhost:3000', // for local development
+  'https://react-js-code-api.vercel.app', // your deployed React app
+];
+
+// ✅ CORS setup
 app.use(
   cors({
-    origin: 'https://react-js-code-api.vercel.app/', // your React app URL
+    origin: function (origin, callback) {
+      // Allow requests with no origin (mobile apps, curl, etc.)
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        console.log('❌ Blocked by CORS:', origin);
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     credentials: true,
   })
 );
@@ -20,7 +35,7 @@ app.use(
 // ✅ MongoDB connection
 const connectDB = async () => {
   try {
-  await mongoose.connect(process.env.MONGO_URI, {
+    await mongoose.connect(process.env.MONGO_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,
     });
@@ -32,16 +47,16 @@ const connectDB = async () => {
 };
 connectDB();
 
-// ✅ Session middleware (must be before routes)
+// ✅ Session middleware (before routes)
 app.use(
   session({
     name: 'sid',
-    secret: 'supersecret',
+    secret: 'supersecret', // change this to a secure value
     resave: false,
     saveUninitialized: false,
     cookie: {
       httpOnly: true,
-      secure: false, // Set true in production (with HTTPS)
+      secure: process.env.NODE_ENV === 'production', // true in production (HTTPS)
       sameSite: 'lax',
       maxAge: 1000 * 60 * 60, // 1 hour
     },
@@ -51,9 +66,14 @@ app.use(
 // ✅ Static folder for uploads
 app.use('/uploads', express.static('uploads'));
 
-// ✅ API Routes
+// ✅ Routes
 app.use('/', userRoutes);
 
-// ✅ Server Listen
-const PORT = 8000;
+// ✅ Root check route
+app.get('/', (req, res) => {
+  res.send('🚀 Node API is running...');
+});
+
+// ✅ Start Server
+const PORT = process.env.PORT || 8000;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
