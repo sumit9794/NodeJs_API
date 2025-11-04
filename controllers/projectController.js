@@ -1,4 +1,4 @@
-import Project from '../models/Project.js';
+const Project = require("../models/Project");
 
 // ✅ Create a new project
 export const createProject = async (req, res) => {
