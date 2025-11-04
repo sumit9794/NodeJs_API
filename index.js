@@ -12,7 +12,7 @@ app.use(express.json());
 // ✅ CORS setup (for React frontend)
 app.use(
   cors({
-    origin: 'http://localhost:3000', // your React app URL
+    origin: 'https://react-js-code-api.vercel.app/', // your React app URL
     credentials: true,
   })
 );
