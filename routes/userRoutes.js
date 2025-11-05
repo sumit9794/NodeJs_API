@@ -4,6 +4,7 @@ const userController = require('../controllers/userController');
 const projectController = require('../controllers/projectController');
 const authenticateSession = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const { generateChatResponse, generateImage } = require('../controllers/genaiController');
 
 router.post('/signup', userController.signup);
 router.post('/login', userController.login);
@@ -36,6 +37,11 @@ router.get('/projects/search', authenticateSession,projectController.searchProje
 // Delete a project
 //router.delete('/projects/id', authenticateSession, projectController.deleteProject);
 router.delete('/projects/:id', authenticateSession, projectController.deleteProject);
+
+// AI Routes
+router.post('genai/chat', authenticateSession, generateChatResponse);
+router.post('genai/image', authenticateSession, generateImage);
+
 
 
 module.exports = router;
