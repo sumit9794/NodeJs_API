@@ -58,29 +58,17 @@ exports.login = async (req, res) => {
   const { user_name, password } = req.body;
 
   if (!user_name || !password) {
-    return res
-      .status(400)
-      .json({ message: 'Username and password required' });
+    return res.status(400).json({ message: 'Username and password required' });
   }
 
   try {
     const user = await User.findOne({ user_name });
 
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
+    if (!user) return res.status(401).json({ message: 'Invalid credentials' });
 
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
+    if (!isMatch) return res.status(401).json({ message: 'Invalid credentials' });
 
-    if (!req.session) {
-      console.error('🚨 req.session is undefined!');
-      return res.status(500).json({ message: 'Session not initialized' });
-    }
-
-    // Set session userId
     req.session.userId = user._id;
 
     req.session.save((err) => {
@@ -156,23 +144,12 @@ exports.getProfile = async (req, res) => {
 // 🟢 LOGOUT CONTROLLER
 // ======================
 exports.logout = (req, res) => {
-  if (!req.session) {
-    return res.status(200).json({ message: 'No active session' });
-  }
-
   req.session.destroy((err) => {
     if (err) {
-      console.error('Error destroying session:', err);
+      console.error('🚨 Session destroy error:', err);
       return res.status(500).json({ message: 'Logout failed' });
     }
-
-    // Clear session cookie
-    res.clearCookie('sid', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
-    });
-
-    return res.status(200).json({ message: 'Logged out successfully' });
+    res.clearCookie('sid', { path: '/' });
+    res.json({ message: 'Logout successful' });
   });
 };

@@ -2,6 +2,7 @@ const express = require('express');
 const session = require('express-session');
 const cors = require('cors');
 const mongoose = require('mongoose');
+const MongoStore = require('connect-mongo');
 const userRoutes = require('./routes/userRoutes');
 require('dotenv').config();
 
@@ -10,17 +11,15 @@ const app = express();
 // ✅ Middleware
 app.use(express.json());
 
-// ✅ Allowed frontend origins (no trailing slash!)
+// ✅ CORS setup (allow frontend to send cookies)
 const allowedOrigins = [
-  'http://localhost:3000', // for local development
-  'https://react-js-code-api.vercel.app', // your deployed React app
+  'http://localhost:3000',               // for local dev
+  'https://react-js-code-api.vercel.app' // your deployed React app
 ];
 
-// ✅ CORS setup
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, curl, etc.)
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
@@ -32,7 +31,7 @@ app.use(
   })
 );
 
-// ✅ MongoDB connection
+// ✅ MongoDB Connection
 const connectDB = async () => {
   try {
     await mongoose.connect(process.env.MONGO_URI, {
@@ -47,17 +46,23 @@ const connectDB = async () => {
 };
 connectDB();
 
-// ✅ Session middleware (before routes)
+// ✅ Session Middleware (Mongo store)
+app.set('trust proxy', 1); // needed for secure cookies on Render
+
 app.use(
   session({
     name: 'sid',
-    secret: 'supersecret', // change this to a secure value
+    secret: 'supersecret', // change this to env var in production
     resave: false,
     saveUninitialized: false,
+    store: MongoStore.create({
+      mongoUrl: process.env.MONGO_URI,
+      collectionName: 'sessions',
+    }),
     cookie: {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production', // true in production (HTTPS)
-      sameSite: 'lax',
+      secure: true,        // true since Render uses HTTPS
+      sameSite: 'none',    // must be 'none' for cross-domain cookies (Vercel → Render)
       maxAge: 1000 * 60 * 60, // 1 hour
     },
   })
@@ -69,7 +74,7 @@ app.use('/uploads', express.static('uploads'));
 // ✅ Routes
 app.use('/', userRoutes);
 
-// ✅ Root check route
+// ✅ Root check
 app.get('/', (req, res) => {
   res.send('🚀 Node API is running...');
 });
