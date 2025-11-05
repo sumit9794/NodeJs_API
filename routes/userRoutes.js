@@ -39,8 +39,8 @@ router.get('/projects/search', authenticateSession,projectController.searchProje
 router.delete('/projects/:id', authenticateSession, projectController.deleteProject);
 
 // AI Routes
-router.post('genai/chat', authenticateSession, generateChatResponse);
-router.post('genai/image', authenticateSession, generateImage);
+router.post('/genai/chat', authenticateSession, generateChatResponse);
+router.post('/genai/image', authenticateSession, generateImage);
 
 
 
