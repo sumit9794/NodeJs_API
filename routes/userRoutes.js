@@ -32,7 +32,7 @@ router.get('/projects/edit/:id', authenticateSession, projectController.getProje
 // Update a project
 router.put('/projects/update/:id', authenticateSession,upload.single('thumbnail'), projectController.updateProject);
 // Filter Routes
-router.get('projects/search', authenticateSession,projectController.searchProjects);
+router.get('/projects/search', authenticateSession,projectController.searchProjects);
 // Delete a project
 //router.delete('/projects/id', authenticateSession, projectController.deleteProject);
 router.delete('/projects/:id', authenticateSession, projectController.deleteProject);
